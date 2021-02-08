@@ -22,8 +22,7 @@ class Face:
             return self.__dict__[name]
         singular = name.removesuffix('s')
         if singular in self.FaceEntry.__slots__:
-            mlist = list(map(lambda entry: getattr(entry, singular), self.entries))
-            return mlist
+            return list(map(lambda entry: getattr(entry, singular), self.entries))
         else:
             raise AttributeError
 
