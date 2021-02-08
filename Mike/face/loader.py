@@ -7,7 +7,7 @@ from face import Face
 from video import capture
 
 
-class Loader:
+class FaceLoader:
     DATA_DIR = './Mike/face/data'
     IMAGES_DIR = DATA_DIR + '/images'
     PICKLE_DIR = DATA_DIR + '/pickle'
@@ -38,11 +38,13 @@ class Loader:
             with open(f'{pickle_dir}/{face.name}.pkl', 'wb') as output_file:
                 pickle.dump(face, output_file)
 
-    def load(self, pickle_dir=None) -> List[Face]:
+    def load(self, names=None, pickle_dir=None) -> List[Face]:
         """loads pickled Faces to list"""
         pickle_dir = pickle_dir or self.PICKLE_DIR
         faces = []
         for name in os.listdir(pickle_dir):
+            if names and os.path.splitext(name)[0] not in names:
+                continue
             with open(f'{pickle_dir}/{name}', 'rb') as input_file:
                 face = pickle.load(input_file)
                 faces.append(face)
@@ -50,7 +52,7 @@ class Loader:
 
 
 if __name__ == '__main__':
-    loader = Loader()
-    faces = loader.get_faces(Loader.IMAGES_DIR)
+    loader = FaceLoader()
+    faces = loader.get_faces(FaceLoader.IMAGES_DIR)
     loader.dump(*faces)
     # faces = loader.load()
