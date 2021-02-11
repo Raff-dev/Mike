@@ -1,20 +1,23 @@
-from enum import Enum, auto
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractclassmethod, abstractmethod, abstractproperty
 import random
 from typing import List
 import inspect
 
+import Mike.assistant.assistant as assistant
+
 
 class ResponseType(metaclass=ABCMeta):
-    def __init__(self, assistant) -> None:
-        self.assistant = assistant
+
+    @abstractproperty
+    def interruptable(self) -> bool:
+        ...
 
     @abstractmethod
     def execute(self,  *args, **kwargs) -> None:
         ...
 
     @abstractproperty
-    def interruptable(self) -> bool:
+    def _responses(self) -> List[str]:
         ...
 
     @property
@@ -26,49 +29,62 @@ class ResponseType(metaclass=ABCMeta):
             responses += cls._responses
         return responses
 
-    def confirm(self):
-        response = random.choice(self.responses)
-        if self.interruptable:
-            self.assistant.say(response)
-        else:
-            self.assistant._say(response)
-
-
-class InterruptableResponse(ResponseType):
-    interruptable = True
-
 
 class ConfirmResponse(ResponseType):
     interruptable = False
-    _responses = [
-        '. okay boss',
-        '. yes chief',
-        '. sure',
-        '. affirmative',
-        '. got it',
-    ]
+    _responses = []
 
     def execute(self, *args, **kwargs):
-        self.confirm()
+        response = random.choice(self.responses)
+        if self.interruptable:
+            assistant.Assistant().say(response)
+        else:
+            assistant.Assistant()._say(response)
+
+
+class UnknownResponse(ConfirmResponse):
+    _responses = [
+        ". sorry i didn't get that",
+        ". i didn't catch that",
+        ". can't quite figure out what you mean",
+        ". this was quite unambigious",
+    ]
+
+
+class ErrorResponse(ConfirmResponse):
+    _responses = [
+        ". there was an error",
+        ". an error comming through",
+        ". i have come across a problem analysing your request",
+    ]
 
 
 class InterruptResponse(ConfirmResponse):
     _responses = [
-        '. shut up, will i? yes i will',
-        '. will i ever shut up?',
-        '. guess i\'ll just shut up',
+        ". okay boss",
+        ". yes chief",
+        ". sure",
+        ". affirmative",
+        ". got it",
+        ". shut up, will i? yes i will",
+        ". will i ever shut up?",
+        ". guess i'll just shut up",
+    ] + ['']*20
+
+
+class WakeUpResponse(ConfirmResponse):
+    _responses = [
+        ". yes chief?",
+        ". ready for action",
+        ". how can i help?",
+        ". yes boss?"
     ]
 
 
-class Response():
-
-    class Type(Enum):
-        GREETING = auto()
-        ERROR = auto()
-        UNKNOWN = auto()
-        CONFIRM = auto()
-
-    def __init__(self, restype) -> None:
-        self.type = restype
-
-        # self.response = self.get_response(restype)
+class TerminateResponse(ConfirmResponse):
+    _responses = [
+        ". see you next time",
+        ". power off",
+        ". Mike is shitting down",
+        ". executing protocol sleeperoo"
+    ]
