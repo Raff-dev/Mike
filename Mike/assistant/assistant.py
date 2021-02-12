@@ -1,11 +1,12 @@
 import multiprocessing
-import speech_recognition as sr
 import pyttsx3
+import speech_recognition as sr
+from speech_recognition import UnknownValueError, WaitTimeoutError, RequestError
 
 from Mike.utils.Singleton import Singleton
-import Mike.assistant.actionmanager as actionmanager
 import Mike.assistant.response as responses
 import Mike.assistant.action as actions
+import Mike.assistant.state as state
 
 
 class Assistant(metaclass=Singleton):
@@ -14,14 +15,16 @@ class Assistant(metaclass=Singleton):
     def __init__(self) -> None:
         self._speaker = pyttsx3.init()
         self._recognizer = sr.Recognizer()
-        self._action_manager = actionmanager.ActionManager()
-        self._awake = False
+        self._state = state.DormantState()
         self._running = True
         self.set_up()
 
     def set_up(self):
         self._speaker.setProperty('rate', 200)
         self._speaker.setProperty('voice', self.james)
+
+    def terminate(self):
+        self._running = False
 
     @staticmethod
     def _say(text):
@@ -41,20 +44,14 @@ class Assistant(metaclass=Singleton):
     def listen(self):
         with sr.Microphone() as source:
             while self._running:
-                audio = self._recognizer.listen(source, timeout=10)
-                self.recognize(audio)
-
-    def recognize(self, audio):
-        try:
-            text = self._recognizer.recognize_google(audio).lower()
-            print(text)
-            if not self._awake and not actions.WakeUpAction.match(text):
-                return
-            self._action_manager.evaluate(text)
-        except Exception as exception:
-            if self._awake:
-                self._action_manager.handle_exception(exception)
-                self._awake = False
+                audio = self._recognizer.listen(source)
+                try:
+                    text = self._recognizer.recognize_google(audio).lower()
+                    print(text)
+                    self._state = self._state.handle_input(text)
+                except (UnknownValueError, WaitTimeoutError, RequestError) as exception:
+                    print(exception)
+                    self._state = self._state.handle_exception(exception)
 
     def detect(self, command):
         with sr.Microphone() as source:
@@ -68,15 +65,3 @@ class Assistant(metaclass=Singleton):
     def test(self):
         for _ in range(5):
             responses.WakeUpResponse().execute()
-
-    def test_listen(self):
-        with sr.Microphone() as source:
-            while True:
-                try:
-                    audio = self._recognizer.listen(source)
-                    text = self._recognizer.recognize_google(audio)
-                    print(text)
-                except sr.UnknownValueError:
-                    responses.UnknownResponse().execute()
-                except sr.RequestError:
-                    responses.ErrorResponse().execute()
